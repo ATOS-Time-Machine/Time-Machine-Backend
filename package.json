@@ -1,0 +1,25 @@
+{
+  "name": "time-machine",
+  "version": "1.0.0",
+  "description": "ATOS Time Machine Backend",
+  "main": "app.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/ATOS-Time-Machine/Time-Machine-Backend.git"
+  },
+  "author": "UCL Systems Engineering 2017 Group 20",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/ATOS-Time-Machine/Time-Machine-Backend/issues"
+  },
+  "homepage": "https://github.com/ATOS-Time-Machine/Time-Machine-Backend#readme",
+  "dependencies": {
+    "bcrypt-nodejs": "0.0.3",
+    "body-parser": "^1.16.0",
+    "express": "^4.14.1",
+    "mysql": "^2.13.0"
+  }
+}
