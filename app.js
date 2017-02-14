@@ -38,22 +38,21 @@ app.post("/register", function (req, res) {
     });
 });
 
+app.post("/login", function (req, res) {
+    console.log("User attempting to login");
+    var query = "SELECT password FROM users WHERE email=?;";
+    connection.query(query, [req.body.email], function (error, results, fields) {
+        if (error) {
+            throw error;
+        }
+        //alert(bcrypt.compareSync(req.body.password,results[0].password));
+        res.send("login="+bcrypt.compareSync(req.body.password,results[0].password)); //need to also add +"token="+tokenGenerate() to this response string
+    });
+});
+
 app.listen(3000, function () {
     console.log("Listening on port 3000");
 });
-
-// Example of how to do SQL queries with prepared statements (with a really pathetic SQL query lol)
-// app.get("/", function (req, res) {
-//     var query = "SELECT emailID FROM users WHERE password = ?";
-//     connection.query(query, ["uniquepassword"], function (error, results, fields) {
-//         if (error) {
-//             throw error; // handle properly
-//         }
-//         res.json({
-//             emailID: results[0].emailID
-//         });
-//     });
-// });
 
 // app.get("/name/:name", function (req, res) {
 //     res.json({
