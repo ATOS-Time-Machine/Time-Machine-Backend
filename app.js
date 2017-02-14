@@ -19,7 +19,7 @@ var mysql = require("mysql");
 var connection = mysql.createConnection({
     host: "localhost",
     user: "root",
-    password: "root",
+    password: "",
     database: "timemachine"
 });
 
@@ -29,7 +29,7 @@ connection.connect();
 app.post("/register", function (req, res) {
     console.log("User attempting to register an account");
     var salt = bcrypt.genSaltSync(10);
-    var hash = bcrypt.hashSync(req.params.password, salt);
+    var hash = bcrypt.hashSync(req.body.password, salt);
     var query = "INSERT INTO users (name,email,password) VALUES(?,?,?);";
     connection.query(query, [req.body.name, req.body.email, hash], function (error, results, fields) {
         if (error) {
@@ -45,8 +45,9 @@ app.post("/login", function (req, res) {
         if (error) {
             throw error;
         }
-        //alert(bcrypt.compareSync(req.body.password,results[0].password));
-        res.send("login="+bcrypt.compareSync(req.body.password,results[0].password)); //need to also add +"token="+tokenGenerate() to this response string
+        //alert(bcrypt.compareSync(req.body.password, results[0].password));
+        console.log(bcrypt.compareSync(req.body.password,results[0].password));
+        //res.send("login="+bcrypt.compareSync(req.body.password,results[0].password)); //need to also add +"token="+tokenGenerate() to this response string
     });
 });
 
