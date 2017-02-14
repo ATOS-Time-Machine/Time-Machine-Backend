@@ -3,6 +3,11 @@
 var express = require("express");
 var bodyParser = require("body-parser");
 var bcrypt = require('bcrypt-nodejs');
+var randtoken = require('rand-token');
+var date = require('date-and-time');
+
+//UPDATE users SET token=NULL, tokenDate=NULL WHERE TIMESTAMPDIFF(minute, tokenDate, NOW()) > 60;
+
 var app = express();
 
 app.set("json spaces", 4);
@@ -19,28 +24,45 @@ var mysql = require("mysql");
 var connection = mysql.createConnection({
     host: "localhost",
     user: "root",
-    password: "",
-    database: "timemachine"
+    password: "root",
+    database: "timemachinedb"
 });
 
 connection.connect();
+
+var interval = setInterval(function() {
+  	console.log("Checking for expired tokens");
+  	//Delete tokens that have been set more than one hour ago
+	var query = "UPDATE users SET token=NULL, tokenDate=NULL WHERE TIMESTAMPDIFF(minute, tokenDate, NOW()) > ?;";
+	connection.query(query, [20], function (error, results, fields) {
+	    	if (error) {
+	        	throw error;
+	    	}
+		});
+	}, 60000);  //check every hour
+
 
 //GET & POST METHODS GO HERE
 app.post("/register", function (req, res) {
     console.log("User attempting to register an account");
     var salt = bcrypt.genSaltSync(10);
     var hash = bcrypt.hashSync(req.body.password, salt);
-    var query = "INSERT INTO users (name,email,password) VALUES(?,?,?);";
-    connection.query(query, [req.body.name, req.body.email, hash], function (error, results, fields) {
+    var token = randtoken.generate(16);
+    var today = date.format(new Date(), 'YYYY/MM/DD HH:mm:ss');
+
+    var query = "INSERT INTO users (fullName,staffID,password,token,tokenDate) VALUES(?,?,?,?,?);";
+    connection.query(query, [req.body.name, req.body.email, hash, token, today], function (error, results, fields) {
         if (error) {
             throw error;
         }
+    res.json({token: token, user: req.body.email});
+    //Idk how to handle it in the frontend though
     });
 });
 
 app.post("/login", function (req, res) {
     console.log("User attempting to login");
-    var query = "SELECT password FROM users WHERE email=?;";
+    var query = "SELECT password FROM users WHERE staffID=?;";
     connection.query(query, [req.body.email], function (error, results, fields) {
         if (error) {
             throw error;
@@ -48,8 +70,23 @@ app.post("/login", function (req, res) {
         //alert(bcrypt.compareSync(req.body.password, results[0].password));
         console.log(bcrypt.compareSync(req.body.password,results[0].password));
         //res.send("login="+bcrypt.compareSync(req.body.password,results[0].password)); //need to also add +"token="+tokenGenerate() to this response string
+    	updateTokenDate(req.body.email);
     });
 });
+
+//You can call this every time a user does a request
+function updateTokenDate(staffID)
+{
+	var token = randtoken.generate(16);
+	var today = date.format(new Date(), 'YYYY/MM/DD HH:mm:ss');
+
+	var query = "UPDATE users SET token=?, tokenDate=? WHERE staffID=?;";
+	connection.query(query, [token, today, staffID], function (error, results, fields) {
+	    if (error) {
+	        throw error;
+	    }
+	});
+}
 
 app.listen(3000, function () {
     console.log("Listening on port 3000");
