@@ -10,6 +10,8 @@ var date = require('date-and-time');
 
 var app = express();
 
+var TOKEN_LENGTH = 40;
+
 app.set("json spaces", 4);
 app.use(bodyParser.urlencoded({ extended: false }));
 app.use(bodyParser.json());
@@ -39,7 +41,7 @@ var interval = setInterval(function() {
 	        	throw error;
 	    	}
 		});
-	}, 60000);  //check every hour
+	}, (60 * 60 * 1000));  //check every hour
 
 
 //GET & POST METHODS GO HERE
@@ -47,7 +49,7 @@ app.post("/register", function (req, res) {
     console.log("User attempting to register an account");
     var salt = bcrypt.genSaltSync(10);
     var hash = bcrypt.hashSync(req.body.password, salt);
-    var token = randtoken.generate(16);
+    var token = randtoken.generate(TOKEN_LENGTH);
     var today = date.format(new Date(), 'YYYY/MM/DD HH:mm:ss');
 
     var query = "INSERT INTO users (fullName,staffID,password,token,tokenDate) VALUES(?,?,?,?,?);";
@@ -77,7 +79,7 @@ app.post("/login", function (req, res) {
 //You can call this every time a user does a request
 function updateTokenDate(staffID)
 {
-	var token = randtoken.generate(16);
+	var token = randtoken.generate(TOKEN_LENGTH);
 	var today = date.format(new Date(), 'YYYY/MM/DD HH:mm:ss');
 
 	var query = "UPDATE users SET token=?, tokenDate=? WHERE staffID=?;";
