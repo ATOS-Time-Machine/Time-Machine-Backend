@@ -157,7 +157,7 @@ CREATE TABLE `users` (
   `fullName` text NOT NULL,
   `roleID` int(11) DEFAULT NULL,
   `groupID` int(11) DEFAULT NULL,
-  `token` varchar(16) DEFAULT NULL,
+  `token` varchar(50) DEFAULT NULL,
   `tokenDate` datetime DEFAULT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=latin1;
 
