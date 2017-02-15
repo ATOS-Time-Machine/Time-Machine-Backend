@@ -50,8 +50,18 @@ app.post("/register", function (req, res) {
     console.log("User attempting to register an account");
     var salt = bcrypt.genSaltSync(10);
     var hash = bcrypt.hashSync(req.body.password, salt);
-    var token = randtoken.generate(TOKEN_LENGTH);
     var today = date.format(new Date(), 'YYYY/MM/DD HH:mm:ss');
+    var token;
+    var check = "SELECT token FROM users";
+    connection.query(check, function (error, results, fields) {
+        var oldToken = false;
+        do {
+            token = randtoken.generate(TOKEN_LENGTH);
+            for (i = 0; i < results.length; i++) {
+                oldToken |= token === results[i];
+            }
+        } while (oldToken);
+    });
 
     var query = "INSERT INTO users (fullName,staffID,password,token,tokenDate) VALUES(?,?,?,?,?);";
     connection.query(query, [req.body.name, req.body.email, hash, token, today], function (error, results, fields) {
