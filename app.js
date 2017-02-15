@@ -50,24 +50,15 @@ app.post("/register", function (req, res) {
     console.log("User attempting to register an account");
     var salt = bcrypt.genSaltSync(10);
     var hash = bcrypt.hashSync(req.body.password, salt);
-    var today = date.format(new Date(), 'YYYY/MM/DD HH:mm:ss');
-    var token;
-    var check = "SELECT token FROM users";
-    connection.query(check, function (error, results, fields) {
-        var oldToken = false;
-        do {
-            token = randtoken.generate(TOKEN_LENGTH);
-            for (i = 0; i < results.length; i++) {
-                oldToken = oldToken || (token === results[i]);
-            }
-        } while (oldToken);
-    });
 
-    var query = "INSERT INTO users (fullName,staffID,password,token,tokenDate) VALUES(?,?,?,?,?);";
-    connection.query(query, [req.body.name, req.body.email, hash, token, today], function (error, results, fields) {
+    var query = "INSERT INTO users (fullName,staffID,password) VALUES(?,?,?,?,?);";
+    connection.query(query, [req.body.name, req.body.email, hash], function (error, results, fields) {
         if (error) {
             throw error;
         }
+
+        generateToken(staffID);
+
         res.json({
             allow: true,
             token: token
@@ -87,14 +78,25 @@ app.post("/login", function (req, res) {
             allow: bcrypt.compareSync(req.body.password,results[0].password),
             token: results[0].token
         });
-    	updateTokenDate(req.body.email);
+    	generateToken(req.body.email);
     });
 });
 
 //Call this on every request except for the 'register' method
-function updateTokenDate(staffID)
+function generateToken(staffID)
 {
-	var token = randtoken.generate(TOKEN_LENGTH);
+	var token;
+    var check = "SELECT token FROM users";
+    connection.query(check, function (error, results, fields) {
+        var oldToken = false;
+        do {
+            token = randtoken.generate(TOKEN_LENGTH);
+            for (i = 0; i < results.length; i++) {
+                oldToken = oldToken || (token === results[i]);
+            }
+        } while (oldToken);
+    });
+
 	var today = date.format(new Date(), 'YYYY/MM/DD HH:mm:ss');
 
 	var query = "UPDATE users SET token=?, tokenDate=? WHERE staffID=?;";
