@@ -15,6 +15,8 @@ var TOKEN_LENGTH = 40;
 app.set("json spaces", 4);
 app.use(bodyParser.urlencoded({ extended: false }));
 app.use(bodyParser.json());
+
+//only for local testing
 app.use(function(req, res, next) {
   res.header("Access-Control-Allow-Origin", "*");
   res.header("Access-Control-Allow-Headers", "Origin, X-Requested-With, Content-Type, Accept");
@@ -26,23 +28,22 @@ var mysql = require("mysql");
 var connection = mysql.createConnection({
     host: "localhost",
     user: "root",
-    password: "root",
+    password: "Namyrrur7",
     database: "timemachinedb"
 });
 
 connection.connect();
 
-var interval = setInterval(function() {
+setInterval(function() {
   	console.log("Checking for expired tokens");
   	//Delete tokens that have been set more than one hour ago
 	var query = "UPDATE users SET token=NULL, tokenDate=NULL WHERE TIMESTAMPDIFF(minute, tokenDate, NOW()) > ?;";
 	connection.query(query, [20], function (error, results, fields) {
-	    	if (error) {
-	        	throw error;
-	    	}
-		});
-	}, (60 * 60 * 1000));  //check every hour
-
+    	if (error) {
+        	throw error;
+    	}
+	});
+}, (60 * 60 * 1000));  //check every hour
 
 //GET & POST METHODS GO HERE
 app.post("/register", function (req, res) {
@@ -57,26 +58,30 @@ app.post("/register", function (req, res) {
         if (error) {
             throw error;
         }
-    res.json({token: token, user: req.body.email});
-    //Idk how to handle it in the frontend though
+        res.json({
+            allow: true,
+            token: token
+        });
     });
 });
 
 app.post("/login", function (req, res) {
     console.log("User attempting to login");
-    var query = "SELECT password FROM users WHERE staffID=?;";
+    var query = "SELECT password, token FROM users WHERE staffID=?;";
     connection.query(query, [req.body.email], function (error, results, fields) {
         if (error) {
             throw error;
         }
-        //alert(bcrypt.compareSync(req.body.password, results[0].password));
-        console.log(bcrypt.compareSync(req.body.password,results[0].password));
-        //res.send("login="+bcrypt.compareSync(req.body.password,results[0].password)); //need to also add +"token="+tokenGenerate() to this response string
+        //res.send("allow="+bcrypt.compareSync(req.body.password,results[0].password)+"&token="+results[0].token);
+        res.json({
+            allow: bcrypt.compareSync(req.body.password,results[0].password),
+            token: results[0].token
+        });
     	updateTokenDate(req.body.email);
     });
 });
 
-//You can call this every time a user does a request
+//Call this on every request except for the 'register' method
 function updateTokenDate(staffID)
 {
 	var token = randtoken.generate(TOKEN_LENGTH);
@@ -93,42 +98,3 @@ function updateTokenDate(staffID)
 app.listen(3000, function () {
     console.log("Listening on port 3000");
 });
-
-// app.get("/name/:name", function (req, res) {
-//     res.json({
-//         name: req.params.name
-//     });
-// });
-//
-// app.post("/name", function (req, res) {
-//     res.json({
-//         name: req.body.name
-//     });
-// });
-//
-// var crypto = require('crypto');
-
-/** Sync */
-// function generateRandomToken(size) {
-//   return crypto.randomBytes(size).toString('hex');
-// }
-//
-// app.get("/test", function (req, res) {
-//     res.json({
-//         token: generateRandomToken(40)
-//     });
-// });
-//
-// var bcrypt = require('bcrypt-nodejs'); //you'll need to change this if you're using bcrypt instead of bcrypt-nodejs
-//
-// app.get("/test/:name", function (req, res) {
-//     var salt = bcrypt.genSaltSync(10);
-//     var hash = bcrypt.hashSync(req.params.name, salt);
-//     res.json({
-//         match: bcrypt.compareSync("password", hash)
-//     });
-// });
-
-// setInterval(function () {
-//     //console.log("wolo"); handle expiration stuff here
-// }, 1000);
