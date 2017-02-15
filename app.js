@@ -58,7 +58,7 @@ app.post("/register", function (req, res) {
         do {
             token = randtoken.generate(TOKEN_LENGTH);
             for (i = 0; i < results.length; i++) {
-                oldToken |= token === results[i];
+                oldToken = oldToken || (token === results[i]);
             }
         } while (oldToken);
     });
