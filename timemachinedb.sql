@@ -161,13 +161,6 @@ CREATE TABLE `users` (
   `tokenDate` datetime DEFAULT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=latin1;
 
---
--- Dumping data for table `users`
---
-
-INSERT INTO `users` (`staffID`, `password`, `fullName`, `roleID`, `groupID`, `token`, `tokenDate`) VALUES
-('giorgio@diocane.com', '$2a$10$kfEi54Dl2BjR/IoI/euua.pWIJefRTc89GFNmigiOhL4jviZQbD7u', 'giorgio', NULL, NULL, 'sKyYsn1pxoZzBXv8', '2017-02-14 20:51:55');
-
 -- --------------------------------------------------------
 
 --
