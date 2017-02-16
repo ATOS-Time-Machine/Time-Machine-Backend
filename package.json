@@ -21,7 +21,10 @@
     "body-parser": "^1.16.0",
     "date-and-time": "^0.4.0",
     "express": "^4.14.1",
+    "msexcel-builder": "0.0.2",
     "mysql": "^2.13.0",
+    "nodemailer": "^3.1.1",
+    "nodemailer-smtp-transport": "^2.7.2",
     "rand-token": "^0.3.0"
   }
 }
