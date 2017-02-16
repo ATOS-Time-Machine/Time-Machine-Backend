@@ -37,12 +37,12 @@ connection.connect();
 setInterval(function() {
   	console.log("Checking for expired tokens");
   	//Delete tokens that have been set more than one hour ago
-	var query = "UPDATE users SET token=NULL, tokenDate=NULL WHERE TIMESTAMPDIFF(minute, tokenDate, NOW()) > ?;";
-	connection.query(query, [20], function (error, results, fields) {
+  var query = "UPDATE users SET token=NULL, tokenDate=NULL WHERE TIMESTAMPDIFF(minute, tokenDate, NOW()) > ?;";
+  connection.query(query, [20], function (error, results, fields) {
     	if (error) {
         	throw error;
     	}
-	});
+  });
 }, (60 * 60 * 1000));  //check every hour
 
 //GET & POST METHODS GO HERE
@@ -51,17 +51,17 @@ app.post("/register", function (req, res) {
     var salt = bcrypt.genSaltSync(10);
     var hash = bcrypt.hashSync(req.body.password, salt);
 
-    var query = "INSERT INTO users (fullName,staffID,password) VALUES(?,?,?,?,?);";
+    var query = "INSERT INTO users (fullName,staffID,password) VALUES(?,?,?);";
     connection.query(query, [req.body.name, req.body.email, hash], function (error, results, fields) {
         if (error) {
             throw error;
         }
 
-        generateToken(staffID);
-
-        res.json({
-            allow: true,
-            token: token
+        generateToken(req.body.email, function(token) {
+          res.json({
+              allow: true,
+              token: token
+          });
         });
     });
 });
@@ -74,37 +74,39 @@ app.post("/login", function (req, res) {
             throw error;
         }
         //res.send("allow="+bcrypt.compareSync(req.body.password,results[0].password)+"&token="+results[0].token);
+    	updateToken(req.body.email, results[0].token, function(token) {
         res.json({
             allow: bcrypt.compareSync(req.body.password,results[0].password),
-            token: results[0].token
+            token: token
         });
-    	generateToken(req.body.email);
+      });
     });
 });
 
-//Call this on every request except for the 'register' method
-function generateToken(staffID)
-{
-	var token;
-    var check = "SELECT token FROM users";
-    connection.query(check, function (error, results, fields) {
-        var oldToken = false;
-        do {
-            token = randtoken.generate(TOKEN_LENGTH);
-            for (i = 0; i < results.length; i++) {
-                oldToken = oldToken || (token === results[i]);
-            }
-        } while (oldToken);
-    });
+function generateToken(staffID, callback) {
+  var check = "SELECT token FROM users";
+  connection.query(check, function (error, results, fields) {
+      var oldToken = false;
+      var token;
+      do {
+          token = randtoken.generate(TOKEN_LENGTH);
+          for (i = 0; i < results.length; i++) {
+              oldToken = oldToken || (token === results[i]);
+          }
+      } while (oldToken);
+      updateToken(staffID, token, callback);
+  });
+}
 
-	var today = date.format(new Date(), 'YYYY/MM/DD HH:mm:ss');
-
-	var query = "UPDATE users SET token=?, tokenDate=? WHERE staffID=?;";
-	connection.query(query, [token, today, staffID], function (error, results, fields) {
-	    if (error) {
-	        throw error;
-	    }
-	});
+function updateToken(staffID, token, callback) {
+  var today = date.format(new Date(), 'YYYY/MM/DD HH:mm:ss');
+  var query = "UPDATE users SET token=?, tokenDate=? WHERE staffID=?;";
+  connection.query(query, [token, today, staffID], function (error, results, fields) {
+      if (error) {
+          throw error;
+      }
+      callback(token);
+  });
 }
 
 app.listen(3000, function () {
