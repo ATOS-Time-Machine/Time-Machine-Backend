@@ -46,8 +46,8 @@ app.post("/adduser", function (req, res) {
 
 app.post("/login", function (req, res) {
     console.log("Logging in");
-    var query = "SELECT Password FROM Users WHERE StaffID=111;";
-    connection.query(query, function (error, results) {
+    var query = "SELECT Password FROM Users WHERE StaffID=?;";
+    connection.query(query, [req.body.log_id],function (error, results) {
         if (error) {
             throw error;
         } else {
@@ -57,6 +57,7 @@ app.post("/login", function (req, res) {
                     token: req.body.log_id
                 });
             } else {
+                console.log(results[0].Password);
                 res.json({
                     success: bcrypt.compareSync(req.body.log_password, results[0].Password),
                     token: req.body.log_id
@@ -81,7 +82,7 @@ app.get("/profile/:das", function (req, res) {
 
 app.post("/profile/", function (req, res) {
     var query = "UPDATE Users SET FirstName=?, LastName=?, PayRoll=?, Location=?, Email=?, Alerts=?, Role=? WHERE StaffID=?;";
-    connection.query(query, [req.body.profile_first_name, req.body.profile_last_name, req.body.profile_pay_roll, req.body.profile_location, req.body.profile_email, req.body.profile_alerts, req.body.profile_role], function (error, results) {
+    connection.query(query, [req.body.profile_first_name, req.body.profile_last_name, req.body.profile_pay_roll, req.body.profile_location, req.body.profile_email, req.body.profile_alerts, req.body.profile_role, req.body.das], function (error, results) {
         if (error) {
             throw error;
         } else {
@@ -108,7 +109,7 @@ app.post("/request", function (req, res) {
 
 app.get("/review/:das", function (req, res) {
     var query = "SELECT * FROM Requests WHERE Supervisor=? AND Phase = 1";
-    connection.query(query, [req.params.das], function (error, results) {
+    connection.query(query,[req.params.das], function (error, results) {
         if (error) {
             throw error;
         } else {
@@ -120,8 +121,9 @@ app.get("/review/:das", function (req, res) {
 });
 
 app.post("/review", function (req, res) {
-    var query = "UPDATE Requests SET Status=?, Comment=?, Phase=2 WHERE Supervisor=? AND Phase=1;";
-    connection.query(query, [req.body.approve_status, req.body.approve_comment, req.body.supervisor], function (error, results) {
+    console.log(req.body);
+    var query = "UPDATE Requests SET Status=?, Comment=?, Phase=2 WHERE Supervisor=111 AND Phase=1;";
+    connection.query(query, [req.body.approve_status, req.body.approve_comment], function (error) {
         if (error) {
             throw error;
         } else {
@@ -146,13 +148,27 @@ app.get("/present/:das", function (req, res) {
 });
 
 app.post("/present", function (req, res) {
-    var query = "UPDATE Requests SET Rate=?, Date=?, Time=?, Duration=?, Phase=3 WHERE Supervisor=? AND Phase=2;";
-    connection.query(query, [req.body.das, req.body.actual_rate, req.body.actual_date, req.body.actual_time, req.body.actual_duration], function (error, results) {
+    console.log(req.body);
+    var query = "UPDATE Requests SET Rate=?, RequestDate=?, RequestTime=?, Duration=?, Phase=3 WHERE StaffID=? AND Phase=2;";
+    connection.query(query, [req.body.confirm_rate, req.body.confirm_date, req.body.confirm_time, req.body.confirm_duration, req.body.das], function (error, results) {
         if (error) {
             throw error;
         } else {
             res.json({
                 success: true
+            });
+        }
+    });
+});
+
+app.get("/staff/:das", function (req, res) {
+    var query = "SELECT * FROM Users WHERE Supervisor=?;";
+    connection.query(query, [req.params.das], function (error, results) {
+        if (error) {
+            throw error;
+        } else {
+            res.json({
+                results: results
             });
         }
     });
