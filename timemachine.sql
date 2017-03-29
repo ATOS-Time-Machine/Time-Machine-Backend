@@ -10,8 +10,6 @@ CREATE TABLE Users (
     Role varchar(255) NOT NULL,
     Access varchar(255) NOT NULL,
     Supervisor varchar(255) NOT NULL,
-    Token varchar(255) DEFAULT NULL,
-    TokenDate datetime DEFAULT NULL,
     PRIMARY KEY (StaffID)
 );
 
@@ -46,4 +44,4 @@ CREATE TABLE Codes (
     CONSTRAINT WBSID PRIMARY KEY (StaffID, WBSCode)
 );
 
-INSERT INTO Users (StaffID, FirstName, LastName, Password, PayRoll, Location, Email, Alerts, Role, Access, Supervisor) VALUES("111","Ryan","Collins","111","test","test","test","test","Team Leader","test","test");
+INSERT INTO Users (StaffID, FirstName, LastName, Password, PayRoll, Location, Email, Alerts, Role, Access, Supervisor) VALUES("111", "Ryan", "Collins", "$2a$10$7agmNuglhlR03ZQ2vZt9kO.f52kLqklGcHk4.BtSyJMkD.T6Lf3YW", "1", "1", "chromerurry@gmail.com", "1", "2", "1", "111");

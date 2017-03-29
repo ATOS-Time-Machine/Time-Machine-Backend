@@ -1,11 +1,34 @@
 #!/usr/bin/env nodejs
+
+// ========================
+// ====== Packages ========
+// ========================
 var express = require("express");
+var app = express();
 var bodyParser = require("body-parser");
 var bcrypt = require('bcrypt-nodejs');
+var mysql = require("mysql");
+var jwt = require('jsonwebtoken');
+var config = require('./config');
 
-var app = express();
+// ========================
+// ==== Configuration =====
+// ========================
 
+// Set up the MySQL database
+var connection = mysql.createConnection({
+    host: "localhost",
+    user: "root",
+    password: config.password,
+    database: config.database
+});
+connection.connect();
+
+// Express options
+app.set('secret', config.secret);
 app.set("json spaces", 4);
+
+// Use body parser to get information from POST and/or URL parameters
 app.use(bodyParser.urlencoded({ extended: false }));
 app.use(bodyParser.json());
 
@@ -16,128 +39,180 @@ app.use(function (req, res, next) {
     next();
 });
 
-// Setup mysql database config
-var mysql = require("mysql");
-var connection = mysql.createConnection({
-    host: "localhost",
-    user: "root",
-    password: "Namyrrur7",
-    database: "timemachine"
+// ========================
+// ======== Routes ========
+// ========================
+
+// Basic Route
+app.get('/', function (req, res) {
+    res.send('Hello! The API is at /api');
 });
 
-connection.connect();
+// Route to authenticate user
+app.post("/authenticate", function (req, res) {
+    console.log("Authenticating crendentials")
+    var query = "SELECT Password FROM Users WHERE StaffID=?;";
+    var parameters = [req.body.id];
+    connection.query(query, parameters, function (error, results) {
+        if (!error) {
+            jwt.sign(req.body, config.secret, {}, function (error, token) {
+                if (!error) {
+                    if (bcrypt.compareSync(req.body.password, results[0].Password)) {
+                        res.json({
+                            success: true,
+                            token: token
+                        });
+                    } else {
+                        res.json({
+                            success: false
+                        });
+                    }
+                }
+            });
+        }
+    });
+});
 
-// Get & post methods go here
+// Route to add a new user
 app.post("/adduser", function (req, res) {
     console.log("Adding a new user");
-    var salt = bcrypt.genSaltSync(10);
-    var hash = bcrypt.hashSync(req.body.user_password, salt);
-    var query = "INSERT INTO Users (StaffID, FirstName, LastName, Password, PayRoll, Location, Email, Alerts, Role, Access, Supervisor) VALUES(?,?,?,?,?,?,?,?,?,?,?);";
-    connection.query(query, [req.body.user_das, req.body.user_first_name, req.body.user_last_name, hash, req.body.user_pay_roll, req.body.user_location, req.body.user_email, req.body.user_alerts, req.body.user_role, req.body.user_access, req.body.supervisor], function (error) {
-        if (error) {
-            throw error;
-        } else {
-            res.json({
-                success: true
+    jwt.verify(req.body.token, config.secret, function (error, decoded) {
+        if (!error) {
+            var hash = bcrypt.hashSync(req.body.password, bcrypt.genSaltSync(10));
+            var query = "INSERT INTO Users (StaffID, FirstName, LastName, Password, PayRoll, Location, Email, Alerts, Role, Access, Supervisor) VALUES(?,?,?,?,?,?,?,?,?,?,?);";
+            var parameters = [req.body.das, req.body.first_name, req.body.last_name, hash, req.body.pay_roll, req.body.location, req.body.email, req.body.alerts, req.body.role, req.body.access, decoded.id];
+            connection.query(query, parameters, function (error) {
+                if (!error) {
+                    res.json({
+                        success: true
+                    });
+                }
             });
         }
     });
 });
 
-app.post("/login", function (req, res) {
-    console.log("Logging in");
-    var query = "SELECT Password FROM Users WHERE StaffID=111;";
-    connection.query(query, function (error, results) {
-        if (error) {
-            throw error;
-        } else {
-            if (req.body.log_password === "111") {
-                res.json({
-                    success: (req.body.log_password === results[0].Password),
-                    token: req.body.log_id
-                });
-            } else {
-                res.json({
-                    success: bcrypt.compareSync(req.body.log_password, results[0].Password),
-                    token: req.body.log_id
-                });
-            }
-        }
-    });
-});
-
-app.get("/profile/:das", function (req, res) {
-    var query = "SELECT * FROM Users WHERE StaffID=?;";
-    connection.query(query, [req.params.das], function (error, results) {
-        if (error) {
-            throw error;
-        } else {
-            res.json({
-                results: results[0]
+// Route to get list of staff under the supervisor
+app.get("/staff/:token", function (req, res) {
+    console.log("Getting a list of staff");
+    jwt.verify(req.params.token, config.secret, function (error, decoded) {
+        if (!error) {
+            var query = "SELECT * FROM Users WHERE Supervisor=?;";
+            connection.query(query, [decoded.id], function (error, results) {
+                if (!error) {
+                    res.json({
+                        results: results
+                    });
+                }
             });
         }
     });
 });
 
-app.post("/profile/", function (req, res) {
-    var query = "UPDATE Users SET FirstName=?, LastName=?, PayRoll=?, Location=?, Email=?, Alerts=?, Role=? WHERE StaffID=?;";
-    connection.query(query, [req.body.profile_first_name, req.body.profile_last_name, req.body.profile_pay_roll, req.body.profile_location, req.body.profile_email, req.body.profile_alerts, req.body.profile_role], function (error, results) {
-        if (error) {
-            throw error;
-        } else {
-            res.json({
-                success: true
+
+// Route to view the profile of a user
+app.get("/profile/:token", function (req, res) {
+    console.log("Getting profile information");
+    jwt.verify(req.params.token, config.secret, function (error, decoded) {
+        if (!error) {
+            var query = "SELECT * FROM Users WHERE StaffID=?";
+            connection.query(query, [decoded.id], function (error, results) {
+                if (!error) {
+                    res.json({
+                        results: results[0]
+                    });
+                }
             });
         }
     });
 });
 
+//Route to update the profile of a user
+app.post("/profile", function (req, res) {
+    console.log("Updating user profile");
+    jwt.verify(req.body.token, config.secret, function (error, decoded) {
+        if (!error) {
+            var query = "UPDATE Users SET FirstName=?, LastName=?, PayRoll=?, Location=?, Email=?, Alerts=?, Role=? WHERE StaffID=?;";
+            var parameters = [req.body.first_name, req.body.last_name, req.body.pay_roll, req.body.location, req.body.email, req.body.alerts, req.body.role, decoded.id];
+            connection.query(query, parameters, function (error) {
+                if (!error) {
+                    res.json({
+                        success: true
+                    });
+                }
+            });
+        }
+    });
+});
+
+//Route to submit an overtime request
 app.post("/request", function (req, res) {
-    console.log("Processing an overtime request");
-    var query = "INSERT INTO Requests (StaffID, Contract, Future, RequestDate, RequestTime, Duration, USD, WBS, ReasonFree, OvertimeReason, HoursReason, Rate, Manager, Revenue, Paying, Supervisor, Phase) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?);";
-    connection.query(query, [req.body.das, req.body.request_contract, req.body.request_future, req.body.request_date, req.body.request_time, req.body.request_duration, req.body.request_usd, req.body.request_wbs, req.body.request_reason_free, req.body.request_reason_overtime, req.body.request_reason_hours, req.body.request_rate, req.body.request_manager, req.body.request_revenue, req.body.request_paying, 111, 1], function (error) {
-        if (error) {
-            throw error;
-        } else {
-            res.json({
-                success: true
+    console.log("Submitting an overtime request");
+    jwt.verify(req.body.token, config.secret, function (error, decoded) {
+        if (!error) {
+            var search_query = "SELECT Supervisor FROM Users WHERE StaffID=?";
+            connection.query(search_query, [decoded.id], function (error, results) {
+                if (!error) {
+                    var supervisor = results[0].Supervisor;
+                    var insert_query = "INSERT INTO Requests (StaffID, Contract, Future, RequestDate, RequestTime, Duration, USD, WBS, ReasonFree, OvertimeReason, HoursReason, Rate, Manager, Revenue, Paying, Supervisor, Phase) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?);";
+                    var parameters = [decoded.id, req.body.contract, req.body.future, req.body.date, req.body.time, req.body.duration, req.body.usd, req.body.wbs, req.body.reason_free, req.body.reason_overtime, req.body.reason_hours, req.body.rate, req.body.manager, req.body.revenue, req.body.paying, supervisor, 1];
+                    console.log(parameters);
+                    connection.query(insert_query, parameters, function (error) {
+                        if (!error) {
+                            res.json({
+                                success: true
+                            });
+                        }
+                    });
+                }
             });
         }
     });
 });
 
-app.get("/review/:das", function (req, res) {
-    var query = "SELECT * FROM Requests WHERE Supervisor=? AND Phase = 1";
-    connection.query(query, [req.params.das], function (error, results) {
-        if (error) {
-            throw error;
-        } else {
-            res.json({
-                results: results
+//Route to get overtime requests needing reviewing
+app.get("/review/:token", function (req, res) {
+    console.log("Submitting an overtime request");
+    jwt.verify(req.params.token, config.secret, function (error, decoded) {
+        if (!error) {
+            var query = "SELECT * FROM Requests WHERE Supervisor=? AND Phase = 1";;
+            connection.query(query, [decoded.id], function (error, results) {
+                if (!error) {
+                    res.json({
+                        results: results
+                    });
+                }
             });
         }
     });
 });
 
+/* NOT FULLY WORKING YET
+
+
+//Route to submit an overtime request review
 app.post("/review", function (req, res) {
-    var query = "UPDATE Requests SET Status=?, Comment=?, Phase=2 WHERE Supervisor=? AND Phase=1;";
-    connection.query(query, [req.body.approve_status, req.body.approve_comment, req.body.supervisor], function (error, results) {
-        if (error) {
-            throw error;
-        } else {
-            res.json({
-                success: true
+    jwt.verify(req.body.token, config.secret, function (error) {
+        if (!error) {
+            var query = "UPDATE Requests SET Status=?, Comment=?, Phase=2 WHERE Supervisor=? AND Phase=1;";
+            var parameters = [req.body.status, req.body.comment, req.body.supervisor];
+            connection.query(query, parameters, function (error) {
+                if (!error) {
+                    res.json({
+                        success: true
+                    });
+                }
             });
         }
     });
 });
 
+//Route to get overtime requests needing confirmation
 app.get("/present/:das", function (req, res) {
     var query = "SELECT * FROM Requests WHERE StaffID=? AND Phase = 2";
-    connection.query(query, [req.params.das], function (error, results) {
-        if (error) {
-            throw error;
-        } else {
+    var parameters = [req.params.das];
+    connection.query(query, parameters, function (error, results) {
+        if (!error) {
             res.json({
                 results: results
             });
@@ -145,19 +220,28 @@ app.get("/present/:das", function (req, res) {
     });
 });
 
+//Route to submit an overtime request confirmation
 app.post("/present", function (req, res) {
-    var query = "UPDATE Requests SET Rate=?, Date=?, Time=?, Duration=?, Phase=3 WHERE Supervisor=? AND Phase=2;";
-    connection.query(query, [req.body.das, req.body.actual_rate, req.body.actual_date, req.body.actual_time, req.body.actual_duration], function (error, results) {
-        if (error) {
-            throw error;
-        } else {
-            res.json({
-                success: true
+    jwt.verify(req.body.token, config.secret, function (error) {
+        if (!error) {
+            var query = "UPDATE Requests SET Rate=?, Date=?, Time=?, Duration=?, Phase=3 WHERE Supervisor=? AND Phase=2;";
+            var parameters = [req.body.rate, req.body.date, req.body.time, req.body.duration, req.body.das];
+            connection.query(query, parameters, function (error) {
+                if (!error) {
+                    res.json({
+                        success: true
+                    });
+                }
             });
         }
     });
 });
 
+*/
+
+// ========================
+// ======== Server ======== 
+// ========================
 app.listen(3000, function () {
     console.log("Listening on port 3000");
 });
