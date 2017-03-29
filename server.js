@@ -162,6 +162,8 @@ app.post("/request", function (req, res) {
                             res.json({
                                 success: true
                             });
+                        } else {
+                            console.error(error);
                         }
                     });
                 }
@@ -172,7 +174,6 @@ app.post("/request", function (req, res) {
 
 //Route to get overtime requests needing reviewing
 app.get("/review/:token", function (req, res) {
-    console.log("Submitting an overtime request");
     jwt.verify(req.params.token, config.secret, function (error, decoded) {
         if (!error) {
             var query = "SELECT * FROM Requests WHERE Supervisor=? AND Phase = 1";;
