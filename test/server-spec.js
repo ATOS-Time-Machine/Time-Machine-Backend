@@ -1,4 +1,3 @@
-var server = require("../server");
 var assert = require('assert');
 
 describe('math', function() {
