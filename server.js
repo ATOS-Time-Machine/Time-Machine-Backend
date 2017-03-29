@@ -113,14 +113,30 @@ app.get("/staff/:token", function (req, res) {
 // Route to view the profile of a user
 app.get("/profile/:token", function (req, res) {
     console.log("Getting profile information");
+    console.log(req.params.token);
     jwt.verify(req.params.token, config.secret, function (error, decoded) {
+        var query = "SELECT * FROM Users WHERE StaffID=?";
         if (!error) {
-            var query = "SELECT * FROM Users WHERE StaffID=?";
             connection.query(query, [decoded.id], function (error, results) {
                 if (!error) {
+                    console.log(results);
                     res.json({
                         results: results[0]
                     });
+                } else {
+                    console.log(error);
+                }
+            });
+        } else {
+            console.log(req.params.token);
+            connection.query(query, [req.params.token], function (error, results) {
+                if (!error) {
+                    console.log(results);
+                    res.json({
+                        results: results[0]
+                    });
+                } else {
+                    console.log(error);
                 }
             });
         }
@@ -131,9 +147,18 @@ app.get("/profile/:token", function (req, res) {
 app.post("/profile", function (req, res) {
     console.log("Updating user profile");
     jwt.verify(req.body.token, config.secret, function (error, decoded) {
-        if (!error) {
-            var query = "UPDATE Users SET FirstName=?, LastName=?, PayRoll=?, Location=?, Email=?, Alerts=?, Role=? WHERE StaffID=?;";
+        var query = "UPDATE Users SET FirstName=?, LastName=?, PayRoll=?, Location=?, Email=?, Alerts=?, Role=? WHERE StaffID=?;";
+        if (!error) {  
             var parameters = [req.body.first_name, req.body.last_name, req.body.pay_roll, req.body.location, req.body.email, req.body.alerts, req.body.role, decoded.id];
+            connection.query(query, parameters, function (error) {
+                if (!error) {
+                    res.json({
+                        success: true
+                    });
+                }
+            });
+        } else {
+            var parameters = [req.body.first_name, req.body.last_name, req.body.pay_roll, req.body.location, req.body.email, req.body.alerts, req.body.role, req.body.token];
             connection.query(query, parameters, function (error) {
                 if (!error) {
                     res.json({
@@ -174,6 +199,7 @@ app.post("/request", function (req, res) {
 
 //Route to get overtime requests needing reviewing
 app.get("/review/:token", function (req, res) {
+    console.log("Getting a list of overtime requests to review");
     jwt.verify(req.params.token, config.secret, function (error, decoded) {
         if (!error) {
             var query = "SELECT * FROM Requests WHERE Supervisor=? AND Phase = 1";;
@@ -188,15 +214,13 @@ app.get("/review/:token", function (req, res) {
     });
 });
 
-/* NOT FULLY WORKING YET
-
-
 //Route to submit an overtime request review
 app.post("/review", function (req, res) {
-    jwt.verify(req.body.token, config.secret, function (error) {
+    console.log("Reviewing an overtime request");
+    jwt.verify(req.body.token, config.secret, function (error, decoded) {
         if (!error) {
-            var query = "UPDATE Requests SET Status=?, Comment=?, Phase=2 WHERE Supervisor=? AND Phase=1;";
-            var parameters = [req.body.status, req.body.comment, req.body.supervisor];
+            var query = "UPDATE Requests SET Status=?, Comment=?, Phase=2 WHERE Supervisor=? AND StaffID=? AND RequestDate=? AND RequestTime=? AND Phase=1;";
+            var parameters = [req.body.status, req.body.comment, decoded.id, req.body.das, req.body.date, req.body.time];
             connection.query(query, parameters, function (error) {
                 if (!error) {
                     res.json({
@@ -204,18 +228,24 @@ app.post("/review", function (req, res) {
                     });
                 }
             });
+        } else {
+            console.log(error);
         }
     });
 });
 
 //Route to get overtime requests needing confirmation
-app.get("/present/:das", function (req, res) {
-    var query = "SELECT * FROM Requests WHERE StaffID=? AND Phase = 2";
-    var parameters = [req.params.das];
-    connection.query(query, parameters, function (error, results) {
+app.get("/present/:token", function (req, res) {
+    console.log("Getting a list of overtime requests to confirm");
+    jwt.verify(req.params.token, config.secret, function (error, decoded) {
         if (!error) {
-            res.json({
-                results: results
+            var query = "SELECT * FROM Requests WHERE StaffID=? AND Phase = 2";
+            connection.query(query, decoded.id, function (error, results) {
+                if (!error) {
+                    res.json({
+                        results: results
+                    });
+                }
             });
         }
     });
@@ -223,22 +253,26 @@ app.get("/present/:das", function (req, res) {
 
 //Route to submit an overtime request confirmation
 app.post("/present", function (req, res) {
-    jwt.verify(req.body.token, config.secret, function (error) {
+    console.log("Confirming an overtime request");
+    jwt.verify(req.body.token, config.secret, function (error, decoded) {
         if (!error) {
-            var query = "UPDATE Requests SET Rate=?, Date=?, Time=?, Duration=?, Phase=3 WHERE Supervisor=? AND Phase=2;";
-            var parameters = [req.body.rate, req.body.date, req.body.time, req.body.duration, req.body.das];
+            var query = "UPDATE Requests SET Rate=?, RequestDate=?, RequestTime=?, Duration=?, Phase=3 WHERE StaffID=? AND RequestDate=? AND RequestTime=? AND Phase=2;";
+            var parameters = [req.body.rate, req.body.newDate, req.body.newTime, req.body.duration, decoded.id, req.body.oldDate, req.body.oldTime];
             connection.query(query, parameters, function (error) {
                 if (!error) {
+                    console.log("hype");
                     res.json({
                         success: true
                     });
+                } else {
+                    console.log(error);
                 }
             });
         }
     });
 });
 
-*/
+
 
 // ========================
 // ======== Server ======== 
