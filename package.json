@@ -4,7 +4,7 @@
   "description": "ATOS Time Machine Backend",
   "main": "app.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "test": "mocha"
   },
   "repository": {
     "type": "git",
@@ -27,5 +27,10 @@
     "nodemailer": "^3.1.1",
     "nodemailer-smtp-transport": "^2.7.2",
     "rand-token": "^0.3.0"
+  },
+  "devDependencies": {
+    "chai": "^3.5.0",
+    "chai-http": "^1.0.0",
+    "mocha": "^3.2.0"
   }
 }
