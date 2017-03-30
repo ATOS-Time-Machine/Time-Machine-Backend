@@ -143,7 +143,7 @@ app.get("/profile/:token", function (req, res) {
     });
 });
 
-//Route to update the profile of a user
+// Route to update the profile of a user
 app.post("/profile", function (req, res) {
     console.log("Updating user profile");
     jwt.verify(req.body.token, config.secret, function (error, decoded) {
@@ -170,7 +170,7 @@ app.post("/profile", function (req, res) {
     });
 });
 
-//Route to submit an overtime request
+// Route to submit an overtime request
 app.post("/request", function (req, res) {
     console.log("Submitting an overtime request");
     jwt.verify(req.body.token, config.secret, function (error, decoded) {
@@ -187,8 +187,6 @@ app.post("/request", function (req, res) {
                             res.json({
                                 success: true
                             });
-                        } else {
-                            console.error(error);
                         }
                     });
                 }
@@ -197,7 +195,7 @@ app.post("/request", function (req, res) {
     });
 });
 
-//Route to get overtime requests needing reviewing
+// Route to get overtime requests needing reviewing
 app.get("/review/:token", function (req, res) {
     console.log("Getting a list of overtime requests to review");
     jwt.verify(req.params.token, config.secret, function (error, decoded) {
@@ -214,7 +212,7 @@ app.get("/review/:token", function (req, res) {
     });
 });
 
-//Route to submit an overtime request review
+// Route to submit an overtime request review
 app.post("/review", function (req, res) {
     console.log("Reviewing an overtime request");
     jwt.verify(req.body.token, config.secret, function (error, decoded) {
@@ -228,19 +226,17 @@ app.post("/review", function (req, res) {
                     });
                 }
             });
-        } else {
-            console.log(error);
         }
     });
 });
 
-//Route to get overtime requests needing confirmation
+// Route to get overtime requests needing confirmation
 app.get("/present/:token", function (req, res) {
     console.log("Getting a list of overtime requests to confirm");
     jwt.verify(req.params.token, config.secret, function (error, decoded) {
         if (!error) {
             var query = "SELECT * FROM Requests WHERE StaffID=? AND Phase = 2";
-            connection.query(query, decoded.id, function (error, results) {
+            connection.query(query, [decoded.id], function (error, results) {
                 if (!error) {
                     res.json({
                         results: results
@@ -251,7 +247,7 @@ app.get("/present/:token", function (req, res) {
     });
 });
 
-//Route to submit an overtime request confirmation
+// Route to submit an overtime request confirmation
 app.post("/present", function (req, res) {
     console.log("Confirming an overtime request");
     jwt.verify(req.body.token, config.secret, function (error, decoded) {
@@ -272,6 +268,70 @@ app.post("/present", function (req, res) {
     });
 });
 
+// Need a get request for processed overtime request -> Easy
+app.get("/past/:token", function (req, res) {
+    console.log("Getting a list of processed overtime requests");
+    jwt.verify(req.params.token, config.secret, function (error, decoded) {
+        if (!error) {
+            var query = "SELECT * FROM Requests WHERE StaffID=? AND Phase = 3";
+            connection.query(query, [decoded.id], function (error, results) {
+                if (!error) {
+                    res.json({
+                        results: results
+                    });
+                }
+            });
+        }
+    });
+});
+
+// Need a get request for getting WBS codes -> Easy
+app.get("/code/:token", function (req, res) {
+    console.log("Getting a list of wbs codes");
+    jwt.verify(req.params.token, config.secret, function (error, decoded) {
+        if (!error) {
+            var query = "SELECT WBSCode FROM Codes WHERE StaffID=?";
+            connection.query(query, [decoded.id], function (error, results) {
+                if (!error) {
+                    res.json({
+                        results: results
+                    });
+                }
+            });
+        }
+    });
+});
+
+// Need a post request for posting WBS codes -> Easy
+app.post("/code", function (req, res) {
+    console.log("Adding a wbs code");
+    jwt.verify(req.body.token, config.secret, function (error, decoded) {
+        if (!error) {
+            var query = "INSERT INTO Codes (StaffID, WBSCode) VALUES(?,?);";
+            var parameters = [decoded.id, req.body.code];
+            connection.query(query, parameters, function (error) {
+                if (!error) {
+                    res.json({
+                        success: true
+                    });
+                } else {
+                    console.log(error);
+                }
+            });
+        }
+    });
+});
+
+// Need a post request for mothly report -> Hard
+
+
+// Need a post request for special claims form -> Hard
+
+
+// Need a function to call if email alerts is enabled -> Hard
+
+
+// Need to restructure this file to accomodate unit tests -> Medium
 
 
 // ========================
