@@ -124,7 +124,7 @@ function updateToken(staffID, token, callback) {
 //Send a mail
 //PS: I had to turn off some security stuff on Gmail
 //PPS: It needs nodejs v6.0 or newer (I needed to update)
-function sendMail(receiver, subject, message, path){
+function sendMail(receiver, subject, message){
     var transporter = nodemailer.createTransport(smtpTransport({
    		service: 'Gmail',
    		auth: {
@@ -138,7 +138,11 @@ function sendMail(receiver, subject, message, path){
    			to: receiver,
    			subject: subject,
    			html: message,
-   			attachments: [{path: path}]
+   			// attachments: [{path: path}]
+            attachments: [{
+                filename: "staffstuff.csv",
+                content: data,
+            }]
 	});
 }
 

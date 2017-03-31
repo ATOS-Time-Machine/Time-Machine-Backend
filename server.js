@@ -322,16 +322,64 @@ app.post("/code", function (req, res) {
     });
 });
 
-// Need a post request for mothly report -> Hard
+// Need a get request for team report -> Hard
 
 
-// Need a post request for special claims form -> Hard
+// Need a get request for special claims form -> Hard
 
 
 // Need a function to call if email alerts is enabled -> Hard
 
 
 // Need to restructure this file to accomodate unit tests -> Medium
+
+
+app.get("/claim/:token/:start/:finish", function (req, res) {
+    console.log("Generating a claim");
+    res.attachment("staffstuff.csv");
+    let data = "";
+    for (let row = 0; row < 10; row++) {
+        for (let col = 0; col < 4; col++) {
+            data += "col" + col;
+            if (col != 3) {
+                data += ", ";
+            }
+        }
+        data += "\n";
+    }
+    res.send(data);
+});
+
+app.get("/report/:token/:start/:finish", function (req, res) {
+    console.log("Generating a report");
+    res.attachment("staffstuff.csv");
+    let data = "";
+    for (let row = 0; row < 10; row++) {
+        for (let col = 0; col < 4; col++) {
+            data += "col" + col;
+            if (col != 3) {
+                data += ", ";
+            }
+        }
+        data += "\n";
+    }
+    res.send(data);
+});
+
+app.get("/tempcsv", function (req, res) {
+    res.attachment("staffstuff.csv");
+    let data = "";
+    for (let row = 0; row < 10; row++) {
+        for (let col = 0; col < 4; col++) {
+            data += "col" + col;
+            if (col != 3) {
+                data += ", ";
+            }
+        }
+        data += "\n";
+    }
+    res.send(data);
+});
 
 
 // ========================
