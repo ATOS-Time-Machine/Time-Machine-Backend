@@ -322,48 +322,30 @@ app.post("/code", function (req, res) {
     });
 });
 
-// Need a get request for team report -> Hard
-
-
-// Need a get request for special claims form -> Hard
-
-
-// Need a function to call if email alerts is enabled -> Hard
-
-
-// Need to restructure this file to accomodate unit tests -> Medium
-
-
 app.get("/claim/:token/:start/:finish", function (req, res) {
     console.log("Generating a claim");
-    res.attachment("staffstuff.csv");
-    let data = "";
-    for (let row = 0; row < 10; row++) {
-        for (let col = 0; col < 4; col++) {
-            data += "col" + col;
-            if (col != 3) {
-                data += ", ";
-            }
+    jwt.verify(req.params.token, config.secret, function (error, decoded) {
+        if (!error) {
+            var query = "SELECT * FROM Requests WHERE StaffID=? && RequestDate>=? && RequestDate<=?";
+            var parameters = [decoded.id, req.params.start, req.params.finish];
+            connection.query(query, parameters, function (error, results) {
+                if (!error) {
+                    //make the csv shit
+                    res.attachment("claim.csv");
+                    let data = "";
+                    for (let row = 0; row < results.length; row++) {
+                        data += results.RequestDate + ", ";
+                        data += results.RequestTime;
+                    }
+                }
+            });
         }
-        data += "\n";
-    }
-    res.send(data);
+    });
 });
 
 app.get("/report/:token/:start/:finish", function (req, res) {
     console.log("Generating a report");
-    res.attachment("staffstuff.csv");
-    let data = "";
-    for (let row = 0; row < 10; row++) {
-        for (let col = 0; col < 4; col++) {
-            data += "col" + col;
-            if (col != 3) {
-                data += ", ";
-            }
-        }
-        data += "\n";
-    }
-    res.send(data);
+
 });
 
 app.get("/tempcsv", function (req, res) {
