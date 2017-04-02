@@ -10,6 +10,8 @@ var bcrypt = require('bcrypt-nodejs');
 var mysql = require("mysql");
 var jwt = require('jsonwebtoken');
 var config = require('./config');
+var nodemailer = require('nodemailer');
+var smtpTransport = require('nodemailer-smtp-transport');
 
 // ========================
 // ==== Configuration =====
@@ -148,7 +150,7 @@ app.post("/profile", function (req, res) {
     console.log("Updating user profile");
     jwt.verify(req.body.token, config.secret, function (error, decoded) {
         var query = "UPDATE Users SET FirstName=?, LastName=?, PayRoll=?, Location=?, Email=?, Alerts=?, Role=? WHERE StaffID=?;";
-        if (!error) {  
+        if (!error) {
             var parameters = [req.body.first_name, req.body.last_name, req.body.pay_roll, req.body.location, req.body.email, req.body.alerts, req.body.role, decoded.id];
             connection.query(query, parameters, function (error) {
                 if (!error) {
@@ -184,6 +186,7 @@ app.post("/request", function (req, res) {
                     console.log(parameters);
                     connection.query(insert_query, parameters, function (error) {
                         if (!error) {
+                            send_email(supervisor, "Time Machine [Review]", "<p> There is a new ovetime request which need reviewing. </p>");
                             res.json({
                                 success: true
                             });
@@ -221,6 +224,7 @@ app.post("/review", function (req, res) {
             var parameters = [req.body.status, req.body.comment, decoded.id, req.body.das, req.body.date, req.body.time];
             connection.query(query, parameters, function (error) {
                 if (!error) {
+                    send_email(decoded.id, "Time Machine [Confirm]", "<p> One of you overtime requests has been reviewed, please confirm. </p>");
                     res.json({
                         success: true
                     });
@@ -322,21 +326,74 @@ app.post("/code", function (req, res) {
     });
 });
 
+function csv_escape(str) {
+    if (str.indexOf('"') != -1) {
+        var out = '"';
+        for (var i = 0; i < str.length; i++) {
+            if (str[i] == '"') {
+                out += "\\";
+            }
+            out += str[i];
+        }
+        out += '"';
+        return out;
+    } else {
+        return '"' + str + '"';
+    }
+}
+
+function send_email(receiver, subject, message) {
+    var query = "SELECT * FROM Users WHERE StaffID=?"
+    connection.query(query, [receiver], function (error, results) {
+        if (!error) {
+            console.log("arena.cpp@gmail.com");
+
+            var transporter = nodemailer.createTransport(smtpTransport({
+                service: 'Gmail',
+                auth: {
+                    user: 'timemachinetest123@gmail.com',
+                    pass: 'giorgiorulez'
+                }
+            }));
+
+            transporter.sendMail({
+                from: 'timemachinetest123@gmail.com',
+                to: "arena.cpp@gmail.com", /*results[0].Email,*/
+                subject: subject,
+                html: message
+            });
+        } else {
+            console.log(error);
+        }
+    });
+}
+
 app.get("/claim/:token/:start/:finish", function (req, res) {
     console.log("Generating a claim");
     jwt.verify(req.params.token, config.secret, function (error, decoded) {
         if (!error) {
-            var query = "SELECT * FROM Requests WHERE StaffID=? && RequestDate>=? && RequestDate<=?";
+            var query = "SELECT * FROM Requests WHERE StaffID=? AND STR_TO_DATE(RequestDate,'%d %M, %Y') BETWEEN STR_TO_DATE(?,'%d %M, %Y') AND STR_TO_DATE(?,'%d %M, %Y')";
             var parameters = [decoded.id, req.params.start, req.params.finish];
+            console.log(parameters);
             connection.query(query, parameters, function (error, results) {
                 if (!error) {
-                    //make the csv shit
+                    console.log(results);
                     res.attachment("claim.csv");
-                    let data = "";
+                    let data = "StaffID, " + results[0].StaffID + "\n";
+                    data += "Date, Time, Rate, Duration, USD Ticket, WBS Code, Contract, Revenue, Paying\n";
                     for (let row = 0; row < results.length; row++) {
-                        data += results.RequestDate + ", ";
-                        data += results.RequestTime;
+                        data += csv_escape(results[row].RequestDate) + ", ";
+                        data += csv_escape(results[row].RequestTime) + ", ";
+                        data += results[row].Rate + ", ";
+                        data += results[row].Duration + ", ";
+                        data += csv_escape(results[row].USD) + ", ";
+                        data += csv_escape(results[row].WBS) + ", ";
+                        data += results[row].Contract + ", ";
+                        data += results[row].Revenue + ", ";
+                        data += results[row].Paying;
+                        data += "\n";
                     }
+                    res.send(data);
                 }
             });
         }
@@ -345,24 +402,35 @@ app.get("/claim/:token/:start/:finish", function (req, res) {
 
 app.get("/report/:token/:start/:finish", function (req, res) {
     console.log("Generating a report");
-
-});
-
-app.get("/tempcsv", function (req, res) {
-    res.attachment("staffstuff.csv");
-    let data = "";
-    for (let row = 0; row < 10; row++) {
-        for (let col = 0; col < 4; col++) {
-            data += "col" + col;
-            if (col != 3) {
-                data += ", ";
-            }
+    jwt.verify(req.params.token, config.secret, function (error, decoded) {
+        if (!error) {
+            var query = "SELECT * FROM Requests WHERE Supervisor=? AND STR_TO_DATE(RequestDate,'%d %M, %Y') BETWEEN STR_TO_DATE(?,'%d %M, %Y') AND STR_TO_DATE(?,'%d %M, %Y')";
+            var parameters = [decoded.id, req.params.start, req.params.finish];
+            console.log(parameters);
+            connection.query(query, parameters, function (error, results) {
+                if (!error) {
+                    console.log(results);
+                    res.attachment("claim.csv");
+                    let data = "Supervisor, " + results[0].Supervisor + "\n";
+                    data += "Date, Time, Rate, Duration, USD Ticket, WBS Code, Contract, Revenue, Paying\n";
+                    for (let row = 0; row < results.length; row++) {
+                        data += csv_escape(results[row].RequestDate) + ", ";
+                        data += csv_escape(results[row].RequestTime) + ", ";
+                        data += results[row].Rate + ", ";
+                        data += results[row].Duration + ", ";
+                        data += csv_escape(results[row].USD) + ", ";
+                        data += csv_escape(results[row].WBS) + ", ";
+                        data += results[row].Contract + ", ";
+                        data += results[row].Revenue + ", ";
+                        data += results[row].Paying;
+                        data += "\n";
+                    }
+                    res.send(data);
+                }
+            });
         }
-        data += "\n";
-    }
-    res.send(data);
+    });
 });
-
 
 // ========================
 // ======== Server ======== 
