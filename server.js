@@ -53,16 +53,21 @@ app.get('/', function (req, res) {
 // Route to authenticate user
 app.post("/authenticate", function (req, res) {
     console.log("Authenticating crendentials")
-    var query = "SELECT Password FROM Users WHERE StaffID=?;";
+    var query = "SELECT Access, Password FROM Users WHERE StaffID=?;"; //make this all select team role whatever
     var parameters = [req.body.id];
     connection.query(query, parameters, function (error, results) {
         if (!error) {
-            jwt.sign(req.body, config.secret, {}, function (error, token) {
+            var res_token = {
+                id: req.body.id,
+                admin: results[0].Access 
+            }
+            jwt.sign(res_token, config.secret, {}, function (error, token) {
                 if (!error) {
                     if (bcrypt.compareSync(req.body.password, results[0].Password)) {
                         res.json({
                             success: true,
-                            token: token
+                            token: token,
+                            admin: results[0].Access 
                         });
                     } else {
                         res.json({
@@ -79,7 +84,7 @@ app.post("/authenticate", function (req, res) {
 app.post("/adduser", function (req, res) {
     console.log("Adding a new user");
     jwt.verify(req.body.token, config.secret, function (error, decoded) {
-        if (!error) {
+        if (!error && (decoded.admin == 1)) {
             var hash = bcrypt.hashSync(req.body.password, bcrypt.genSaltSync(10));
             var query = "INSERT INTO Users (StaffID, FirstName, LastName, Password, PayRoll, Location, Email, Alerts, Role, Access, Supervisor) VALUES(?,?,?,?,?,?,?,?,?,?,?);";
             var parameters = [req.body.das, req.body.first_name, req.body.last_name, hash, req.body.pay_roll, req.body.location, req.body.email, req.body.alerts, req.body.role, req.body.access, decoded.id];
@@ -98,7 +103,7 @@ app.post("/adduser", function (req, res) {
 app.get("/staff/:token", function (req, res) {
     console.log("Getting a list of staff");
     jwt.verify(req.params.token, config.secret, function (error, decoded) {
-        if (!error) {
+        if (!error && (decoded.admin == 1)) {
             var query = "SELECT * FROM Users WHERE Supervisor=?;";
             connection.query(query, [decoded.id], function (error, results) {
                 if (!error) {
@@ -186,7 +191,7 @@ app.post("/request", function (req, res) {
                     console.log(parameters);
                     connection.query(insert_query, parameters, function (error) {
                         if (!error) {
-                            send_email(supervisor, "Time Machine [Review]", "<p> There is a new ovetime request which need reviewing. </p>");
+                            //send_email(supervisor, "Time Machine [Review]", "<p> There is a new ovetime request which need reviewing. </p>");
                             res.json({
                                 success: true
                             });
@@ -202,7 +207,7 @@ app.post("/request", function (req, res) {
 app.get("/review/:token", function (req, res) {
     console.log("Getting a list of overtime requests to review");
     jwt.verify(req.params.token, config.secret, function (error, decoded) {
-        if (!error) {
+        if (!error && (decoded.admin == 1)) {
             var query = "SELECT * FROM Requests WHERE Supervisor=? AND Phase = 1";;
             connection.query(query, [decoded.id], function (error, results) {
                 if (!error) {
@@ -219,12 +224,12 @@ app.get("/review/:token", function (req, res) {
 app.post("/review", function (req, res) {
     console.log("Reviewing an overtime request");
     jwt.verify(req.body.token, config.secret, function (error, decoded) {
-        if (!error) {
+        if (!error && (decoded.admin == 1)) {
             var query = "UPDATE Requests SET Status=?, Comment=?, Phase=2 WHERE Supervisor=? AND StaffID=? AND RequestDate=? AND RequestTime=? AND Phase=1;";
             var parameters = [req.body.status, req.body.comment, decoded.id, req.body.das, req.body.date, req.body.time];
             connection.query(query, parameters, function (error) {
                 if (!error) {
-                    send_email(decoded.id, "Time Machine [Confirm]", "<p> One of you overtime requests has been reviewed, please confirm. </p>");
+                    //send_email(decoded.id, "Time Machine [Confirm]", "<p> One of you overtime requests has been reviewed, please confirm. </p>");
                     res.json({
                         success: true
                     });
@@ -403,14 +408,14 @@ app.get("/claim/:token/:start/:finish", function (req, res) {
 app.get("/report/:token/:start/:finish", function (req, res) {
     console.log("Generating a report");
     jwt.verify(req.params.token, config.secret, function (error, decoded) {
-        if (!error) {
+        if (!error && (decoded.admin == 1)) {
             var query = "SELECT * FROM Requests WHERE Supervisor=? AND STR_TO_DATE(RequestDate,'%d %M, %Y') BETWEEN STR_TO_DATE(?,'%d %M, %Y') AND STR_TO_DATE(?,'%d %M, %Y')";
             var parameters = [decoded.id, req.params.start, req.params.finish];
             console.log(parameters);
             connection.query(query, parameters, function (error, results) {
                 if (!error) {
                     console.log(results);
-                    res.attachment("claim.csv");
+                    res.attachment("report.csv");
                     let data = "Supervisor, " + results[0].Supervisor + "\n";
                     data += "Date, Time, Rate, Duration, USD Ticket, WBS Code, Contract, Revenue, Paying\n";
                     for (let row = 0; row < results.length; row++) {

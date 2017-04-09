@@ -44,4 +44,4 @@ CREATE TABLE Codes (
     CONSTRAINT WBSID PRIMARY KEY (StaffID, WBSCode)
 );
 
-INSERT INTO Users (StaffID, FirstName, LastName, Password, PayRoll, Location, Email, Alerts, Role, Access, Supervisor) VALUES("111", "Ryan", "Collins", "$2a$10$7agmNuglhlR03ZQ2vZt9kO.f52kLqklGcHk4.BtSyJMkD.T6Lf3YW", "1", "1", "chromerurry@gmail.com", "1", "2", "1", "111");
+INSERT INTO Users (StaffID, FirstName, LastName, Password, PayRoll, Location, Email, Alerts, Role, Access, Supervisor) VALUES("111", "Ryan", "Collins", "$2a$10$7agmNuglhlR03ZQ2vZt9kO.f52kLqklGcHk4.BtSyJMkD.T6Lf3YW", "1", "1", "chromerurry@gmail.com", "1", "1", "1", "111");
