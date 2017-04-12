@@ -6,7 +6,7 @@ var config = require('../config');
 
 //Authentication Unit Test
 describe('auth', function() {
-    it('Get Ryan - Success', function(done) {
+    it('Get ID:111 - Success', function(done) {
         var password = "test-password";
         var expectedPassword = bcrypt.hashSync(password, bcrypt.genSaltSync(10));
         var dummyConn = {
@@ -78,7 +78,7 @@ describe('auth', function() {
             done("Shouldn't reach here");
         });
     });
-    it('Get Ryan - Fail password', function(done) {
+    it('Get ID:111 - Fail password', function(done) {
         var password = "test-password";
         var expectedPassword = bcrypt.hashSync(password, bcrypt.genSaltSync(10));
         var dummyConn = {
